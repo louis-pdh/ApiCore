@@ -1,6 +1,6 @@
 {
   "name": "hh-api-core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "simple api core",
   "main": "index.js",
   "scripts": {
