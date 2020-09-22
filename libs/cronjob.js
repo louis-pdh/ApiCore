@@ -26,11 +26,11 @@ class CronJob {
     const cronJobFilePaths = await Filehoud.create()
       .path(this.cronJobPath)
       .ext('.js')
-      .glob('*CronJob.js')
+      .glob(`*${this.postFix}.js`)
       .find();
       
     _.forEach(cronJobFilePaths, (cronJobFilePath) => {
-      const jobName = Path.basename(cronJobFilePath).replace('CronJob.js', '');
+      const jobName = Path.basename(cronJobFilePath).replace(`${this.postFix}.js`, '');
       const job = require(cronJobFilePath);
       const jobActive = _.get(job, 'isActive');
       if (!jobActive) {

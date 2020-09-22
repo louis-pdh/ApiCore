@@ -1,9 +1,12 @@
 const Express = require('express');
 const Dotenv = require('dotenv');
-const BodyParser = require('body-parser');
 
 const Config = require('./libs/config');
 const Logger = require('./libs/logger');
+const Locale = require('./libs/locale');
+const Mongoosee = require('./libs/mongoosee');
+const ExpressLoader = require('./libs/expressloader');
+const Autoload = require('./libs/autoload');
 const CronJob = require('./libs/cronjob');
 
 let coreInstance  = null;
@@ -16,9 +19,13 @@ class ExpressApiCore {
     this.envPath = envPath || `${this.appPath}/.env`;
     this.appName = appName;
 
-    this.Config = new Config({ appPath: this.appPath, });
-    this.Logger = new Logger({ appPath: this.appPath, });
-    this.CronJob = new CronJob({ appPath: this.appPath, });
+    this.Config           = new Config({ appPath: this.appPath, });
+    this.Logger           = new Logger({ appPath: this.appPath, });
+    this.Locale           = new Locale({ appPath: this.appPath, });
+    this.Mongoosee        = new Mongoosee({ appPath: this.appPath, });
+    this.ExpressLoader    = new ExpressLoader({ appPath: this.appPath, });
+    this.Autoload         = new Autoload({ appPath: this.appPath, });
+    this.CronJob          = new CronJob({ appPath: this.appPath, });
   }
 
   async start() {
@@ -26,41 +33,35 @@ class ExpressApiCore {
       path: this.envPath,
     });
     
-    this.expressApp = Express();
+    this.ExpressApp = Express();
 
     //
     await this.Config.load();
-    await this.Logger.load({ expressApp: this.expressApp, appConfigs: this.getAppConfigs(), });
-    await this.CronJob.load({ log4js: this.getLog4js(), });
+    await this.Logger.load({ expressApp: this.ExpressApp, appConfigs: this.AppConfigs, });
+    await this.Locale.load({ appConfigs: this.AppConfigs, });
+    await this.Mongoosee.load({ appConfigs: this.AppConfigs, });
+    await this.ExpressLoader.load({ 
+      expressApp:   this.ExpressApp, 
+      appConfigs:   this.AppConfigs, 
+      log4js:       this.Log4js, 
+      i18nInstance: this.I18nInstance 
+    });
+    await this.Autoload.load({ log4js: this.Log4js, });
+    await this.CronJob.load({ log4js: this.Log4js, });
     //
 
-    this.expressApp.use(BodyParser.urlencoded({ extended: false }));
-    this.expressApp.use(BodyParser.json());
-    this.expressApp.get('/', (req, res) => res.send("Hello World!!"));
-    
-    const appConfigs = this.getAppConfigs();
-    const logger = this.getLog4js().getLogger('system');
-    await new Promise(res => this.expressApp.listen(appConfigs.port, () => {
-      logger.info('Server ON!! PORT:', appConfigs.port);
-      res();
-    }));
   }
 
-  getExpressApp() {
-    return this.expressApp;
-  }
-
-  getAppConfigs() {
-    return this.Config.appConfigs;
-  }
-
-  getLog4js(){
-    return this.Logger.Log4js;
-  }
+  get AppConfigs() { return this.Config.appConfigs; }
+  get I18nInstance() { return this.Locale.i18n; }
+  get Log4js(){ return this.Logger.Log4js; }
+  get Models() { return this.Mongoosee.models; }
 }
 
 module.exports = {
   ExpressApiCore,
+  Mongoose: require('mongoose'),
+  I18n: require('i18n'),
   getCoreInstance: () => coreInstance,
 
 }
