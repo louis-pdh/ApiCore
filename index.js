@@ -1,5 +1,6 @@
 const Express = require('express');
 const Dotenv = require('dotenv');
+const UUID = require('uuid');
 
 const Config = require('./libs/config');
 const Logger = require('./libs/logger');
@@ -9,15 +10,17 @@ const ExpressLoader = require('./libs/expressloader');
 const Autoload = require('./libs/autoload');
 const CronJob = require('./libs/cronjob');
 
-let coreInstance  = null;
+const coreInstancesStore = {
+  express: {}
+};
 
 class ExpressApiCore {
 
   constructor({ appPath, envPath, appName }) {
-    coreInstance = this;
     this.appPath = appPath;
     this.envPath = envPath || `${this.appPath}/.env`;
-    this.appName = appName;
+    this.appName = appName || UUID.v4();
+    coreInstancesStore.express[this.appName] = this;
 
     this.Config           = new Config({ appPath: this.appPath, });
     this.Logger           = new Logger({ appPath: this.appPath, });
@@ -62,6 +65,5 @@ module.exports = {
   ExpressApiCore,
   Mongoose: require('mongoose'),
   I18n: require('i18n'),
-  getCoreInstance: () => coreInstance,
-
+  getCoreInstance: (type, name) => _.get(coreInstancesStore, `${type}.${name}`),
 }
