@@ -1,4 +1,5 @@
 const Express = require('express');
+require('express-async-errors');
 const Dotenv = require('dotenv');
 const UUID = require('uuid');
 

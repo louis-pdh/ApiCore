@@ -16,7 +16,7 @@ class Autoload {
     if (!Fs.existsSync(this.autoloadPath)) {
       Fs.mkdirSync(this.autoloadPath);
     }
-    const autoloadLogger = log4js.getLogger('system');
+    const autoloadLogger = log4js.getLogger('system.default');
     const autoloadFilePaths = await Filehound.create()
     .path(this.autoloadPath)
     .ext('.js')

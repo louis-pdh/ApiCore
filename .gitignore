@@ -5,6 +5,9 @@ npm-debug.log*
 
 *.test.js
 
+
+local-demo
+
 # Runtime data
 pids
 *.pid

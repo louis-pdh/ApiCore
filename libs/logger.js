@@ -1,10 +1,13 @@
 const Log4js = require('log4js');
 const Morgan = require('morgan');
+const Fs = require('fs');
 const _ = require('lodash');
 
 class Logger  {
 
-  constructor({  }) {
+  constructor({ appPath }) {
+    this.appPath = appPath;
+    this.logPath = `${appPath}/logs`;
     this.defaultLog4jsConfigs = {
       appenders: { 
         console: { type: 'console' }
@@ -18,9 +21,11 @@ class Logger  {
   }
 
   async load({ expressApp, appConfigs = {} }) {
-
+    if (!Fs.existsSync(this.logPath)) {
+      Fs.mkdirSync(this.logPath);
+    }
     const loggerConfigs = appConfigs.logger || {};
-    const requestLogger = Log4js.getLogger('system');
+    const requestLogger = Log4js.getLogger('system.default');
     expressApp.use(Morgan(function (tokens, req, res) {
       requestLogger.info([
         tokens.method(req, res),

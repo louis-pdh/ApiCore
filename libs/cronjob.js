@@ -44,7 +44,7 @@ class CronJob {
         throw new Error('CronJob require onTick function');
       }
 
-      const cronJobLogger = log4js.getLogger('cronjob');
+      const cronJobLogger = log4js.getLogger('cronjob.default');
 
       if (jobOpts.runOnInit) {
         onTick();

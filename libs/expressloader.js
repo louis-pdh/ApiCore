@@ -5,7 +5,6 @@ const Cors = require('cors');
 const Helmet = require('helmet');
 const Fs = require('fs');
 const _ = require('lodash');
-require('express-async-errors');
 
 
 class ExpressLoader {
@@ -20,10 +19,10 @@ class ExpressLoader {
 
   async loadRoutes(expressApp) {
     const apiFilePaths = await Filehound.create()
-    .path(this.expressApiPath)
-    .ext('.js')
-    .glob(`*${this.postFix}.js`)
-    .find();
+      .path(this.expressApiPath)
+      .ext('.js')
+      .glob(`*${this.postFix}.js`)
+      .find();
 
     const routeFilePaths = await Filehound.create()
       .path(this.expressRoutePath)
@@ -75,7 +74,7 @@ class ExpressLoader {
       Fs.mkdirSync(this.expressRoutePath);
     }
 
-    const expressLoaderLogger = log4js.getLogger('system');
+    const expressLoaderLogger = log4js.getLogger('system.default');
 
     //
     expressApp.use(Helmet(_.get(appConfigs, 'helmet')));
@@ -86,19 +85,19 @@ class ExpressLoader {
     //
 
 
-    this.loadRoutes(expressApp);
-  
+    await this.loadRoutes(expressApp);
+
     
     // 500 err
+    const expressLoaderErrorLogger = log4js.getLogger('system.error');
     expressApp.use(function (err, req, res, next) {
-      expressLoaderLogger.error(err.stack);
+      expressLoaderErrorLogger.error(err.stack);
       return res.status(500).json({ message: 'Unknow error' });
     });
 
     //
-    const logger = log4js.getLogger('system');
     await new Promise(res => expressApp.listen(appConfigs.port, () => {
-      logger.info('Server ON!! PORT:', appConfigs.port);
+      expressLoaderLogger.info(`Server ON!! PORT: ${appConfigs.port} - PID: ${process.pid}`);
       res();
     }));
   }
