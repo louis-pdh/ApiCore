@@ -1,5 +1,8 @@
 const Fs = require('fs');
 const _ = require('lodash');
+const Filehound = require('filehound');
+const Path = require('path');
+const Utils = require('./utils');
 
 class Config {
   constructor({ appPath }) {
@@ -21,19 +24,28 @@ class Config {
       throw new Error("Require NODE_ENV in env config");
     }
 
-    const envConfigPath  = `${this.configPath}/${_.upperFirst(_.toLower(nodeEnv))}${this.postFix}.js`; //ex: .../DevelopmentConfig
+    const envConfigPath  = `${this.configPath}/env/${_.upperFirst(_.toLower(nodeEnv))}.js`; //ex: .../Development.js
     let envConfigs = {};
     if (Fs.existsSync(envConfigPath)) {
       envConfigs = require(envConfigPath) || {};
     }
 
     let defaultConfigs = {};
-    if (Fs.existsSync(this.defaultConfigPath)) {
-      defaultConfigs = require(this.defaultConfigPath) || {};
-    }
+    const configFilePaths = await Filehound.create()
+    .path(this.configPath)
+    .ext('.js')
+    .glob(`*.js`)
+    .depth(0)
+    .find();
 
-    this.appConfigs = { ...defaultConfigs, ...envConfigs };
-    
+    _.forEach(configFilePaths, (configFilePath) => {
+      const configName = _.toLower(Path.basename(configFilePath).replace(`.js`, ''));
+      const config = require(configFilePath) || {};
+      defaultConfigs[configName] = config;
+    })
+
+    this.appConfigs = _.merge(defaultConfigs, envConfigs);
+    //Utils.setRequireCache(this.configPath, this.appConfigs);
   }
 }
 

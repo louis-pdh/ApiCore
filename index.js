@@ -7,6 +7,7 @@ const Config = require('./libs/config');
 const Logger = require('./libs/logger');
 const Locale = require('./libs/locale');
 const Mongoosee = require('./libs/mongoosee');
+const Auth = require('./libs/auth');
 const ExpressLoader = require('./libs/expressloader');
 const Autoload = require('./libs/autoload');
 const CronJob = require('./libs/cronjob');
@@ -27,6 +28,7 @@ class ExpressApiCore {
     this.Logger           = new Logger({ appPath: this.appPath, });
     this.Locale           = new Locale({ appPath: this.appPath, });
     this.Mongoosee        = new Mongoosee({ appPath: this.appPath, });
+    this.Auth             = new Auth({ appPath: this.appPath, });
     this.ExpressLoader    = new ExpressLoader({ appPath: this.appPath, });
     this.Autoload         = new Autoload({ appPath: this.appPath, });
     this.CronJob          = new CronJob({ appPath: this.appPath, });
@@ -44,11 +46,13 @@ class ExpressApiCore {
     await this.Logger.load({ expressApp: this.ExpressApp, appConfigs: this.AppConfigs, });
     await this.Locale.load({ appConfigs: this.AppConfigs, });
     await this.Mongoosee.load({ appConfigs: this.AppConfigs, });
+    await this.Auth.load({ appConfigs: this.AppConfigs, });
     await this.ExpressLoader.load({ 
       expressApp:   this.ExpressApp, 
       appConfigs:   this.AppConfigs, 
       log4js:       this.Log4js, 
-      i18nInstance: this.I18nInstance 
+      i18nInstance: this.I18nInstance ,
+      authHandlers: this.AuthHandlers,
     });
     await this.Autoload.load({ log4js: this.Log4js, });
     await this.CronJob.load({ log4js: this.Log4js, });
@@ -60,6 +64,7 @@ class ExpressApiCore {
   get I18nInstance() { return this.Locale.i18n; }
   get Log4js(){ return this.Logger.Log4js; }
   get Models() { return this.Mongoosee.models; }
+  get AuthHandlers() { return this.Auth.authHandlers; }
 }
 
 module.exports = {

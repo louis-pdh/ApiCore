@@ -17,7 +17,7 @@ class ExpressLoader {
     this.postFix = 'Route'
   }
 
-  async loadRoutes(expressApp) {
+  async loadRoutes({ expressApp, authHandlers}) {
     const apiFilePaths = await Filehound.create()
       .path(this.expressApiPath)
       .ext('.js')
@@ -43,6 +43,7 @@ class ExpressLoader {
           method,
           path,
           handler,
+          options = {},
         } = route;
         
         if (!isActive || !method || !path || !handler) {
@@ -54,14 +55,20 @@ class ExpressLoader {
         let routeWithMethod = _.get(expressApp, _.toLower(method));
         if (routeWithMethod) {
           routeWithMethod = routeWithMethod.bind(expressApp);
-          routeWithMethod(path, handler);
+
+          const preHandlers = [];
+          const authName = options.auth;
+          const authHandler = authName ? authHandlers[authName] : null;
+          if (authHandler) preHandlers.push(authHandler);
+
+          routeWithMethod(path, preHandlers, handler);
         }
       });
     });
   
   }
 
-  async load({ expressApp, appConfigs, log4js, i18nInstance }) {
+  async load({ expressApp, appConfigs, log4js, i18nInstance, authHandlers }) {
     if (!Fs.existsSync(this.expressPath)) {
       Fs.mkdirSync(this.expressPath);
     }
@@ -85,7 +92,7 @@ class ExpressLoader {
     //
 
 
-    await this.loadRoutes(expressApp);
+    await this.loadRoutes({ expressApp, authHandlers });
 
     
     // 500 err
@@ -96,8 +103,9 @@ class ExpressLoader {
     });
 
     //
-    await new Promise(res => expressApp.listen(appConfigs.port, () => {
-      expressLoaderLogger.info(`Server ON!! PORT: ${appConfigs.port} - PID: ${process.pid}`);
+    const PORT = process.env.PORT;
+    await new Promise(res => expressApp.listen(PORT, () => {
+      expressLoaderLogger.info(`Server ON!! PORT: ${PORT} - PID: ${process.pid}`);
       res();
     }));
   }
