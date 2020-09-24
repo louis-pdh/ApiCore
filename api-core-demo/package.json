@@ -11,6 +11,6 @@
   "author": "Louis Phan <louis.phhh@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "hh-api-core": "^1.0.0"
+    "hh-api-core": "^1.0.4"
   }
 }

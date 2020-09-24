@@ -7,6 +7,9 @@ module.exports = [
     handler: (req, res) => {
       const message = res.__("Hello World!! Im {{name}}", { name: 'HauDepTrai' })
       res.status(200).json({ message });
+    },
+    options: {
+      auth: 'jwt'
     }
   }
 ]
