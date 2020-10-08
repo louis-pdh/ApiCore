@@ -11,13 +11,14 @@ class SwaggerExpress {
     this.expressApiPath = `${this.expressPath}/api`;
     this.expressRoutePath = `${this.expressPath}/route`;
     this.postFix = 'Route';
+    this.inputValidations = {};
     this.defaultSwaggerDefinition = {
       info: {
         title: 'API Docs',
         version: '1.0.0',
         description: `${appName} API documentation`
       },
-      swagger: '2.0',
+      openapi: '3.0.0',
       // basePath: '/',
       expanded: 'list',
       grouping: 'tags',
@@ -83,13 +84,16 @@ class SwaggerExpress {
         if (routeWithMethod) {
           const routeInputs = []; //
           const validate = options.validate || {};
+          let requestBody = null;
           if (validate.body) {
-            routeInputs.push({
-              name: 'body',
-              in: 'body',
-              description: 'request body',
-              schema: J2S(validate.body).swagger,
-            });
+            requestBody = {
+              content: {
+                'application/json': {
+                  schema: J2S(validate.body).swagger,
+                }
+              },
+              description: 'body data',
+            }
           }
 
           if (validate.params) {
@@ -124,7 +128,11 @@ class SwaggerExpress {
               const swagger = J2S(joiSchema).swagger;
               responseStatus[code] = {
                 description: _.get(swagger, 'description', 'data'),
-                schema: swagger
+                content: {
+                  'application/json': {
+                    schema: swagger
+                  }
+                }
               }
             })
           }
@@ -138,13 +146,14 @@ class SwaggerExpress {
             produces: [
               'application/json'
             ],
+            requestBody,
             parameters: routeInputs,
             responses: responseStatus,
           };
 
           const swaggerPath = _.replace(path, /\/(:([^\/]+))/g, '/{$2}');
           _.set(this.defaultSwaggerDefinition.paths, `${swaggerPath}.${_.toLower(method)}`, swaggerRouteDefinition);
-
+          _.set(this.inputValidations, `${path}.${_.toLower(method)}`, options.validate || {});
         }
       });
     });

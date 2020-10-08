@@ -7,6 +7,7 @@ const Fs = require('fs');
 const _ = require('lodash');
 const Swagger = require('./swagger');
 const Auth = require('./auth');
+const Joi = require('joi');
 
 class ExpressLoader {
 
@@ -59,7 +60,9 @@ class ExpressLoader {
         if (routeWithMethod) {
           routeWithMethod = routeWithMethod.bind(expressApp);
 
-          const preHandlers = [];
+          const preHandlers = []; // auth, validate, ...
+          
+          // auth
           const authName = options.auth;
           let authHandler = authName ? this.Auth.authHandlers[authName] : null;
           if (authHandler) {
@@ -67,6 +70,25 @@ class ExpressLoader {
             preHandlers.push(...authHandler);
           }
 
+          // validate input
+          const inputValidate = _.get(this.Swagger.inputValidations, `${path}.${_.toLower(method)}`, {});
+          if (!_.isEmpty(inputValidate)) {
+            async function validateInput(req, res, next) {
+              const { params: paramsJoi, query: queryJoi, body: bodyJoi } = inputValidate;
+              const validateJobs = [];
+              if (paramsJoi) validateJobs.push(paramsJoi.validateAsync(req.params));
+              if (queryJoi) validateJobs.push(queryJoi.validateAsync(req.query));
+              if (bodyJoi) validateJobs.push(bodyJoi.validateAsync(req.body));
+              try {
+                if (validateJobs.length) await Promise.all(validateJobs);
+                next();
+              } catch (error) {
+                return res.status(404).json({ message: 'Invalid input' });
+              }
+            }
+
+            preHandlers.push(validateInput);
+          }
           routeWithMethod(path, preHandlers, handler);
           
         }
