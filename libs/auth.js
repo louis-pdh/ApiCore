@@ -1,36 +1,33 @@
 const _ = require('lodash');
+const Path = require('path');
+const Fs = require('fs');
+const Filehound = require('filehound');
 
 class Auth {
 
-  constructor({ appPath }) {
-    this.appPath = appPath;
-    this.requestExtractors = {};
-    this.validators = {};
+  constructor({ expressPath }) {
+    this.expressPath = expressPath;
+    this.authPath = `${this.expressPath}/auth`;
+    this.postFix = 'Auth';
     this.authHandlers = {};
   }
 
-  async load({ appConfigs }) {
+  async load({}) {
 
-    const authConfigs = appConfigs.auth || {};
-    this.requestExtractors = authConfigs.requestExtractors;
-    this.validators = authConfigs.validators;
-    _.forEach(authConfigs.validators, (validator, name) => {
-      const { extractor, validate } = validator;
-      const extractRequestFunction = this.requestExtractors[extractor];
-      if (!extractRequestFunction) {
-        throw new Error(`Request extractor ${extractor} does not exist`);
-      }
-      if (!validate) {
-        throw new Error(`Require validate function at extractor ${extractor}`);
-      }
-
-      const validatorWithExtractor = async (req, res, next) => {
-        const params = await extractRequestFunction(req);
-        await validate(params, req, res, next);
-      }
-
-      this.authHandlers[name] = validatorWithExtractor;
-    })
+    if (!Fs.existsSync(this.authPath)) {
+      Fs.mkdirSync(this.authPath);
+    }
+    const authFilePaths = await Filehound.create()
+      .path(this.authPath)
+      .ext('.js')
+      .glob(`*${this.postFix}.js`)
+      .find();
+      
+    _.forEach(authFilePaths, (authFilePath) => {
+      const authHandler = require(authFilePath);
+      const authName = _.toLower(Path.basename(authFilePath).replace(`${this.postFix}.js`, ''));
+      this.authHandlers[authName] = authHandler;
+    });
   }
 
 }

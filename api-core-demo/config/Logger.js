@@ -6,9 +6,9 @@ module.exports = { // logger configs
       multiFile: { type: 'multiFile', base: 'logs/', property: 'categoryName', extension: '.log' }
     }, 
     categories: {
-      cronjob: { appenders: ['multiFile'], level: 'all' },
-      system: { appenders: ['multiFile'], level: 'all' },
-      default: { appenders: ['multiFile'], level: 'all' }
+      cronjob: { appenders: ['console'], level: 'all' },
+      system: { appenders: ['console'], level: 'all' },
+      default: { appenders: ['console'], level: 'all' }
     }
   }
 };

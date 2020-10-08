@@ -5,19 +5,22 @@ const Cors = require('cors');
 const Helmet = require('helmet');
 const Fs = require('fs');
 const _ = require('lodash');
-
+const Swagger = require('./swagger');
+const Auth = require('./auth');
 
 class ExpressLoader {
 
-  constructor({ appPath }) {
+  constructor({ appPath, appName }) {
     this.appPath = appPath;
     this.expressPath = `${this.appPath}/express`;
     this.expressApiPath = `${this.expressPath}/api`;
     this.expressRoutePath = `${this.expressPath}/route`;
-    this.postFix = 'Route'
+    this.postFix = 'Route';
+    this.Auth = new Auth({ expressPath: this.expressPath });
+    this.Swagger = new Swagger({ appPath, appName});
   }
 
-  async loadRoutes({ expressApp, authHandlers}) {
+  async loadRoutes({ expressApp, authHandlers }) {
     const apiFilePaths = await Filehound.create()
       .path(this.expressApiPath)
       .ext('.js')
@@ -58,14 +61,33 @@ class ExpressLoader {
 
           const preHandlers = [];
           const authName = options.auth;
-          const authHandler = authName ? authHandlers[authName] : null;
-          if (authHandler) preHandlers.push(authHandler);
+          let authHandler = authName ? this.Auth.authHandlers[authName] : null;
+          if (authHandler) {
+            if (!_.isArray(authHandler)) authHandler = [ authHandler ];
+            preHandlers.push(...authHandler);
+          }
 
           routeWithMethod(path, preHandlers, handler);
+          
         }
       });
     });
   
+  }
+
+  apiResponse(req, res, next) {
+    res.api = function(data) {
+      const response = {
+        code(code) {
+          return res.status(200).json({
+            code,
+            data
+          })
+        }
+      }
+      return response;
+    };
+    next();
   }
 
   async load({ expressApp, appConfigs, log4js, i18nInstance, authHandlers }) {
@@ -84,17 +106,23 @@ class ExpressLoader {
     const expressLoaderLogger = log4js.getLogger('system.default');
 
     //
+    await this.Auth.load({});
+    await this.Swagger.load({ appConfigs, expressApp, })
+    
+    //
+    expressApp.use(this.apiResponse);
     expressApp.use(Helmet(_.get(appConfigs, 'helmet')));
     expressApp.use(Cors(_.get(appConfigs, 'cors')))
     expressApp.use(BodyParser.urlencoded({ extended: false }));
     expressApp.use(BodyParser.json());
     expressApp.use(i18nInstance.init);
+
     //
-
-
     await this.loadRoutes({ expressApp, authHandlers });
 
-    
+    expressApp.use(function (req, res) {
+      return res.status(404).json({ message: 'Not Found'});
+    })
     // 500 err
     const expressLoaderErrorLogger = log4js.getLogger('system.error');
     expressApp.use(function (err, req, res, next) {

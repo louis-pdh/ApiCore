@@ -1,6 +1,7 @@
 const Express = require('express');
 require('express-async-errors');
 const Dotenv = require('dotenv');
+const _ = require('lodash');
 const UUID = require('uuid');
 
 const Config = require('./libs/config');
@@ -28,8 +29,8 @@ class ExpressApiCore {
     this.Logger           = new Logger({ appPath: this.appPath, });
     this.Locale           = new Locale({ appPath: this.appPath, });
     this.Mongoosee        = new Mongoosee({ appPath: this.appPath, });
-    this.Auth             = new Auth({ appPath: this.appPath, });
-    this.ExpressLoader    = new ExpressLoader({ appPath: this.appPath, });
+    // this.Auth             = new Auth({ appPath: this.appPath, });
+    this.ExpressLoader    = new ExpressLoader({ appPath: this.appPath, appName: this.appName, });
     this.Autoload         = new Autoload({ appPath: this.appPath, });
     this.CronJob          = new CronJob({ appPath: this.appPath, });
   }
@@ -46,13 +47,13 @@ class ExpressApiCore {
     await this.Logger.load({ expressApp: this.ExpressApp, appConfigs: this.AppConfigs, });
     await this.Locale.load({ appConfigs: this.AppConfigs, });
     await this.Mongoosee.load({ appConfigs: this.AppConfigs, });
-    await this.Auth.load({ appConfigs: this.AppConfigs, });
+    // await this.Auth.load({ appConfigs: this.AppConfigs, });
     await this.ExpressLoader.load({ 
       expressApp:   this.ExpressApp, 
       appConfigs:   this.AppConfigs, 
       log4js:       this.Log4js, 
       i18nInstance: this.I18nInstance ,
-      authHandlers: this.AuthHandlers,
+      //authHandlers: this.AuthHandlers,
     });
     await this.Autoload.load({ log4js: this.Log4js, });
     await this.CronJob.load({ log4js: this.Log4js, });
@@ -64,12 +65,14 @@ class ExpressApiCore {
   get I18nInstance() { return this.Locale.i18n; }
   get Log4js(){ return this.Logger.Log4js; }
   get Models() { return this.Mongoosee.models; }
-  get AuthHandlers() { return this.Auth.authHandlers; }
+  get MongooseConnections() { return this.Mongoosee.connections; }
+  get AuthHandlers() { return this.ExpressLoader.Auth.authHandlers; }
 }
 
 module.exports = {
   ExpressApiCore,
   Mongoose: require('mongoose'),
+  Joi: require('joi'),
   I18n: require('i18n'),
   getCoreInstance: (type, name) => _.get(coreInstancesStore, `${type}.${name}`),
 }
