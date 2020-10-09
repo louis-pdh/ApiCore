@@ -39,7 +39,7 @@ class Config {
     .find();
 
     _.forEach(configFilePaths, (configFilePath) => {
-      const configName = _.toLower(Path.basename(configFilePath).replace(`.js`, ''));
+      const configName = _.lowerFirst(Path.basename(configFilePath).replace(`.js`, ''));
       const config = require(configFilePath) || {};
       defaultConfigs[configName] = config;
     })

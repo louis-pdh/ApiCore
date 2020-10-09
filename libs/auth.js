@@ -25,7 +25,7 @@ class Auth {
       
     _.forEach(authFilePaths, (authFilePath) => {
       const authHandler = require(authFilePath);
-      const authName = _.toLower(Path.basename(authFilePath).replace(`${this.postFix}.js`, ''));
+      const authName = _.lowerFirst(Path.basename(authFilePath).replace(`${this.postFix}.js`, ''));
       this.authHandlers[authName] = authHandler;
     });
   }
