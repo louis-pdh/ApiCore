@@ -164,9 +164,12 @@ class SwaggerExpress {
   async load({ appConfigs, expressApp }) {
 
     const swaggerConfigs = _.get(appConfigs, 'swagger', {});
+    const isActive = _.get(swaggerConfigs, 'isActive', false);
+    if (!isActive) return;
+    
     const swaggerDefinition = _.merge(
       this.defaultSwaggerDefinition,
-      swaggerConfigs
+      _.get(swaggerConfigs, 'definition', {})
     );
 
     await this.loadRoutes({ expressApp });
