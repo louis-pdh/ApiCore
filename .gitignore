@@ -70,3 +70,5 @@ serviceAccountKey.json
 /dist
 
 images/*
+
+local-trash

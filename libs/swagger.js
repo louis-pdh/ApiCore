@@ -1,22 +1,21 @@
-const SwaggerUIExpress = require('swagger-ui-express');
-const _ = require('lodash');
-const Filehound = require('filehound');
-const J2S = require('joi-to-swagger');
+const SwaggerUIExpress = require('swagger-ui-express')
+const _ = require('lodash')
+const Filehound = require('filehound')
+const J2S = require('joi-to-swagger')
 
 class SwaggerExpress {
-  
-  constructor({ appPath, appName }) {
-    this.appPath = appPath;
-    this.expressPath = `${this.appPath}/express`;
-    this.expressApiPath = `${this.expressPath}/api`;
-    this.expressRoutePath = `${this.expressPath}/route`;
-    this.postFix = 'Route';
-    this.inputValidations = {};
+  constructor({ appPath, appName, }) {
+    this.appPath = appPath
+    this.modulePath = `${this.appPath}/modules`
+    this.expressApiPath = `${this.expressPath}/api`
+    this.expressRoutePath = `${this.expressPath}/route`
+    this.routePostFix = 'Route'
+    this.inputValidations = {}
     this.defaultSwaggerDefinition = {
       info: {
         title: 'API Docs',
         version: '1.0.0',
-        description: `${appName} API documentation`
+        description: `${appName} API documentation`,
       },
       openapi: '3.0.0',
       // basePath: '/',
@@ -27,112 +26,110 @@ class SwaggerExpress {
         jwt: {
           type: 'apiKey',
           name: 'Authorization',
-          in: 'header'
+          in: 'header',
         },
       },
       security: [
         {
           jwt: [],
-        }
+        },
       ],
       paths: {},
       definitions: {},
       responses: {},
       parameters: {},
-      tags: []
-    };
-    
+    }
   }
 
-
-  async loadRoutes({ expressApp }) {
+  async loadRoutes({ expressApp, }) {
     const apiFilePaths = await Filehound.create()
-      .path(this.expressApiPath)
+      .path(this.modulePath)
       .ext('.js')
-      .glob(`*${this.postFix}.js`)
-      .find();
+      .glob(`*${this.routePostFix}.js`)
+      .find()
 
-    const routeFilePaths = await Filehound.create()
-      .path(this.expressRoutePath)
-      .ext('.js')
-      .glob(`*${this.postFix}.js`)
-      .find();
+    // const routeFilePaths = await Filehound.create()
+    //   .path(this.expressRoutePath)
+    //   .ext('.js')
+    //   .glob(`*${this.postFix}.js`)
+    //   .find()
 
-    const allRouteFilePaths = apiFilePaths.concat(routeFilePaths);
+    const allRouteFilePaths = apiFilePaths // apiFilePaths.concat(routeFilePaths)
     _.forEach(allRouteFilePaths, (routeFilePath) => {
-      let routes = require(routeFilePath) || [];
+      let routes = require(routeFilePath) || []
       if (!_.isArray(routes)) {
-        routes = [ routes ]
+        routes = [ routes, ]
       }
 
       _.forEach(routes, (route) => {
-        let {
+        const {
           isActive,
           method,
           path,
           handler,
+          docs = true,
           options = {},
-        } = route;
+        } = route
         
-        if (!isActive || !method || !path || !handler) {
-          return;
+        if (!isActive || !method || !path || !handler || !docs) {
+          return
         }
 
-        //method = _.toUpper(method);
+        // method = _.toUpper(method);
 
-        let routeWithMethod = _.get(expressApp, _.toLower(method));
+        const routeWithMethod = _.get(expressApp, _.toLower(method))
         if (routeWithMethod) {
-          const routeInputs = []; //
-          const validate = options.validate || {};
-          let requestBody = null;
+          const routeInputs = [] //
+          const validate = options.validate || {}
+          let requestBody = null
           if (validate.body) {
             requestBody = {
               content: {
                 'application/json': {
                   schema: J2S(validate.body).swagger,
-                }
+                },
               },
               description: 'body data',
             }
           }
 
           if (validate.params) {
-            const paramsSwagger = J2S(validate.params).swagger || {};
+            const paramsSwagger = J2S(validate.params).swagger || {}
             _.forEach(paramsSwagger.properties, (schema, prop) => {
               routeInputs.push({
                 in: 'path',
                 description: `param: ${prop}`,
                 name: prop,
                 schema,
-                required: _.includes(paramsSwagger.required, prop)
+                required: _.includes(paramsSwagger.required, prop),
               })
             })
           }
 
           if (validate.query) {
-            const querySwagger = J2S(validate.query).swagger || {};
+            const querySwagger = J2S(validate.query).swagger || {}
             _.forEach(querySwagger.properties, (schema, prop) => {
               routeInputs.push({
                 in: 'query',
                 description: `query: ${prop}`,
                 name: prop,
                 schema,
-                required: _.includes(querySwagger.required, prop)
+                required: _.includes(querySwagger.required, prop),
               })
             })
           }
 
-          const responseStatus = {};
+          const responseStatus = {}
           if (options.responses) {
             _.forEach(options.responses, (joiSchema, code) => {
-              const swagger = J2S(joiSchema).swagger;
+              const swagger = J2S(joiSchema).swagger
               responseStatus[code] = {
                 description: _.get(swagger, 'description', 'data'),
                 content: {
                   'application/json': {
-                    schema: swagger
-                  }
-                }
+                    schema: swagger,
+                  },
+                },
               }
             })
           }
@@ -141,40 +138,38 @@ class SwaggerExpress {
             description: options.description || `${method} request to ${path}`,
             tags: options.tags || [],
             consumes: [    
-              'application/json'
+              'application/json',
             ],    
             produces: [
-              'application/json'
+              'application/json',
             ],
             requestBody,
             parameters: routeInputs,
             responses: responseStatus,
-          };
+          }
 
-          const swaggerPath = _.replace(path, /\/(:([^\/]+))/g, '/{$2}');
-          _.set(this.defaultSwaggerDefinition.paths, `${swaggerPath}.${_.toLower(method)}`, swaggerRouteDefinition);
-          _.set(this.inputValidations, `${path}.${_.toLower(method)}`, options.validate || {});
+          // eslint-disable-next-line no-useless-escape
+          const swaggerPath = _.replace(path, /\/(:([^\/]+))/g, '/{$2}')
+          _.set(this.defaultSwaggerDefinition.paths, `${swaggerPath}.${_.toLower(method)}`, swaggerRouteDefinition)
+          _.set(this.inputValidations, `${path}.${_.toLower(method)}`, options.validate || {})
         }
-      });
-    });
-  
+      })
+    })
   }
 
-
-  async load({ appConfigs, expressApp }) {
-
-    const swaggerConfigs = _.get(appConfigs, 'swagger', {});
-    const isActive = _.get(swaggerConfigs, 'isActive', false);
-    if (!isActive) return;
+  async load({ appConfigs, expressApp, }) {
+    const swaggerConfigs = _.get(appConfigs, 'swagger', {})
+    const isActive = _.get(swaggerConfigs, 'isActive', false)
+    if (!isActive) return
     
     const swaggerDefinition = _.merge(
       this.defaultSwaggerDefinition,
       _.get(swaggerConfigs, 'definition', {})
-    );
+    )
 
-    await this.loadRoutes({ expressApp });
-    expressApp.use('/documentation', SwaggerUIExpress.serve, SwaggerUIExpress.setup(swaggerDefinition, ))
+    await this.loadRoutes({ expressApp, })
+    expressApp.use('/documentation', SwaggerUIExpress.serve, SwaggerUIExpress.setup(swaggerDefinition,))
   }
 }
 
-module.exports = SwaggerExpress;
+module.exports = SwaggerExpress
