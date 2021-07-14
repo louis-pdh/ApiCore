@@ -46,7 +46,7 @@ class ModuleLoader {
     _.forEach(allRouteFilePaths, (routeFilePath) => {
       let routes = require(routeFilePath) || []
       if (!_.isArray(routes)) {
-        routes = [ routes, ]
+        routes = [routes,]
       }
 
       _.forEach(routes, (route) => {
@@ -57,7 +57,7 @@ class ModuleLoader {
           handler,
           options = {},
         } = route
-        
+
         if (!isActive || !method || !path || !handler) {
           return
         }
@@ -69,12 +69,12 @@ class ModuleLoader {
           routeWithMethod = routeWithMethod.bind(expressApp)
 
           const preHandlers = [] // auth, validate, ...
-          
+
           // auth
           const authName = options.auth
           let authHandler = authName ? this.Auth.authHandlers[authName] : null
           if (authHandler) {
-            if (!_.isArray(authHandler)) authHandler = [ authHandler, ]
+            if (!_.isArray(authHandler)) authHandler = [authHandler,]
             preHandlers.push(...authHandler)
           }
 
@@ -126,11 +126,13 @@ class ModuleLoader {
     //
     await this.Auth.load()
     await this.Swagger.load({ appConfigs, expressApp, })
-    
+
     //
     function apiSecurity(req, res, next) {
       res.api = function (data) {
-        return res.status(200).json(data)
+        return function (code) {
+          return res.status(200).json({ code, data })
+        }
       }
       if (_.get(appConfigs, 'apiSecurity.isActive', true)) {
         // decrypt request
@@ -142,20 +144,22 @@ class ModuleLoader {
         if (!valid) return
         // encrypt response 
         res.api = function (data) {
-          [ valid, data, ] = API_SECURITY.EncryptResponse({
+          [valid, data,] = API_SECURITY.EncryptResponse({
             req,
             res,
             appConfigs,
-            data, 
+            data,
           })
-          if (!valid) return 
-          return res.status(200).json(data)
+          return function (code) {
+            if (!valid) return res.status(400).json({ message: 'Invalid request.' })
+            return res.status(200).json({ code, data })
+          }
         }
       }
-      
+
       next()
     }
-    
+
     expressApp.use(Helmet(_.get(appConfigs, 'helmet')))
     expressApp.use(Cors(_.get(appConfigs, 'cors')))
     expressApp.use(BodyParser.urlencoded({ extended: false, }))
@@ -187,11 +191,11 @@ class ModuleLoader {
 
 const API_SECURITY = {
   DecryptRequest: ({ req, res, appConfigs, }) => {
-    if (['', '/', ].includes(req.url) === false) {
+    if (['', '/',].includes(req.url) === false) {
       res.status(400).json({
         message: 'Invalid request',
       })
-      return false 
+      return false
     }
     const xAPIKey = req.headers['x-api-key']
     const xAPIClient = req.headers['x-api-client']
@@ -203,7 +207,7 @@ const API_SECURITY = {
     if (!xAPIKey || !xAPIClient || !xAPIAction || !rsaKey || !xAPIValidation) {
       res.status(400).json({
         message: 'Invalid request',
-      }) 
+      })
       return false
     }
     let aesKey = null
@@ -213,13 +217,13 @@ const API_SECURITY = {
       if (!aesKey) {
         res.status(400).json({
           message: 'Invalid request',
-        }) 
+        })
         return false
       }
     } catch (err) {
       res.status(400).json({
         message: 'Invalid request',
-      }) 
+      })
       return false
     }
 
@@ -237,8 +241,8 @@ const API_SECURITY = {
     } catch (err) {
       res.status(400).json({
         message: 'Invalid request',
-      })  
-      return false 
+      })
+      return false
     }
     req.url = apiPath
 
@@ -251,8 +255,8 @@ const API_SECURITY = {
     } catch (err) {
       res.status(400).json({
         message: 'Invalid request',
-      })  
-      return false 
+      })
+      return false
     }
 
     req.body = body
@@ -265,8 +269,8 @@ const API_SECURITY = {
     if (!xAPIClient || !rsaKey) {
       res.status(400).json({
         message: 'Invalid request',
-      }) 
-      return [ false, null, ]
+      })
+      return [false, null,]
     }
     let xAPIKey = null
     let aesKey = null
@@ -277,27 +281,27 @@ const API_SECURITY = {
       if (!xAPIKey) {
         res.status(400).json({
           message: 'Invalid request',
-        }) 
-        return [ false, null, ]
+        })
+        return [false, null,]
       }
     } catch (err) {
       res.status(400).json({
         message: 'Invalid request',
-      }) 
-      return [ false, null, ]
+      })
+      return [false, null,]
     }
 
     const xAPIAction = CryptoJS.AES.encrypt(req.url, aesKey).toString()
     const xAPIMessage = CryptoJS.AES.encrypt(JSON.stringify(data), aesKey).toString()
     const validation = `${xAPIAction}_${_.toUpper(req.method)}_${Authorization}_${xAPIMessage}`
     const hmac = Crypto.createHmac('md5', aesKey).update(validation, 'utf8').digest('hex')
-    
+
     res.set('x-api-key', xAPIKey)
     res.set('x-api-client', xAPIClient)
     res.set('x-api-action', xAPIAction)
     res.set('x-api-validation', hmac)
 
-    return [ true, { 'x-api-message': xAPIMessage, }, ]
+    return [true, { 'x-api-message': xAPIMessage, },]
   },
 }
 
