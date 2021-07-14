@@ -6,11 +6,11 @@ const Utils = require('./utils')
 
 class Config {
   constructor({ appPath, }) {
-    this.appPath                = appPath
-    this.configPath             = `${appPath}/config`
-    this.postFix                = 'Config'
-    this.defaultConfigPath      = `${this.configPath}/DefaultConfig.js`
-    this.appConfigs             = {}
+    this.appPath = appPath
+    this.configPath = `${appPath}/config`
+    this.postFix = 'Config'
+    this.defaultConfigPath = `${this.configPath}/DefaultConfig.js`
+    this.appConfigs = {}
   }
 
   async load() {
@@ -23,7 +23,7 @@ class Config {
       throw new Error('Require NODE_ENV in env config')
     }
 
-    const envConfigPath  = `${this.configPath}/env/${_.upperFirst(_.toLower(nodeEnv))}.js` // ex: .../Development.js
+    const envConfigPath = `${this.configPath}/env/${_.upperFirst(_.toLower(nodeEnv))}.js` // ex: .../Development.js
     let envConfigs = {}
     if (Fs.existsSync(envConfigPath)) {
       envConfigs = require(envConfigPath) || {}
@@ -38,9 +38,11 @@ class Config {
       .find()
 
     _.forEach(configFilePaths, (configFilePath) => {
-      // const configName = _.lowerFirst(Path.basename(configFilePath).replace('.js', ''))
-      const config = require(configFilePath) || {}
-      defaultConfigs =  _.merge(defaultConfigs, config)
+      const configName = _.lowerFirst(Path.basename(configFilePath).replace('.js', ''))
+      const config = {
+        [configName]: require(configFilePath) || {}
+      }
+      defaultConfigs = _.merge(defaultConfigs, config)
     })
 
     this.appConfigs = _.merge(defaultConfigs, envConfigs)
